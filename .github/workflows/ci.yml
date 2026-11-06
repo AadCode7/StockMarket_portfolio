@@ -9,6 +9,8 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,9 +23,6 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run backend tests
         working-directory: backend
-        env:
-          SUPABASE_JWT_ISSUER: https://example.supabase.co/auth/v1
-          SUPABASE_JWKS_URL: https://example.supabase.co/auth/v1/.well-known/jwks.json
         run: pytest -q
 
   frontend:
