@@ -1,0 +1,46 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+export default function SignupPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); setMessage(""); setLoading(true);
+    try {
+      const { error: authError } = await createClient().auth.signUp({
+        email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (authError) throw authError;
+      setMessage("Check your email and open the confirmation link to activate your account.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create account.");
+    } finally { setLoading(false); }
+  }
+
+  return <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
+    <Link href="/" className="mb-8 text-sm text-blue-400">← MarketLens</Link>
+    <h1 className="text-3xl font-semibold">Create your account</h1>
+    <p className="mt-2 text-slate-400">Your research and portfolio data stay tied to your account.</p>
+    <form onSubmit={submit} className="mt-8 space-y-4">
+      <label className="block text-sm text-slate-300">Email
+        <input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
+          className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 outline-none focus:border-blue-400" />
+      </label>
+      <label className="block text-sm text-slate-300">Password
+        <input required minLength={8} type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)}
+          className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 outline-none focus:border-blue-400" />
+      </label>
+      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+      {message && <p role="status" className="text-sm text-emerald-400">{message}</p>}
+      <button disabled={loading} className="w-full rounded-lg bg-blue-500 px-4 py-3 font-semibold text-slate-950 disabled:opacity-60">{loading ? "Creating account…" : "Create account"}</button>
+    </form>
+    <p className="mt-6 text-sm text-slate-400">Already registered? <Link className="text-blue-400" href="/login">Sign in</Link></p>
+  </main>;
+}
