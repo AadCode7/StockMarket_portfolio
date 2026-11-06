@@ -2,12 +2,15 @@
 
 ## Supabase
 1. Create a Supabase Free project.
-2. Copy project URL and publishable/anon key into .env.
+2. Copy project URL and publishable/anon key into the environment variables.
 3. Set SUPABASE_JWT_ISSUER to https://<project-ref>.supabase.co/auth/v1.
 4. Set SUPABASE_JWKS_URL to https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json.
 5. Run supabase/migrations/0001_initial_schema.sql in the SQL editor.
 6. In Authentication > URL Configuration, add http://localhost:3000/auth/callback and the deployed frontend callback URL to allowed redirects.
-7. Enable email confirmation. Configure SMTP within the plan's current limits.
+7. Enable email confirmation. Configure SMTP within current project limits.
+
+## Environment files
+The root .env.example is the master template. For local development, copy it to backend/.env for FastAPI and copy the frontend-specific values to frontend/.env.local for Next.js. Never commit either file. In cloud hosting, set the same values in the service's secret/environment dashboard.
 
 ## Backend
 Use Python 3.11:
@@ -19,7 +22,7 @@ python -m venv .venv
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
-Health: http://localhost:8000/health.
+Health: http://localhost:8000/health. Authenticated identity: GET http://localhost:8000/api/v1/me with a Supabase access token. Daily history: GET /api/v1/market-data/history?symbol=RELIANCE&exchange=NSE&start=2024-01-01&end=2024-12-31.
 
 ## Frontend
 Use Node.js 20 or later:
