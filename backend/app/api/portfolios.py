@@ -161,9 +161,14 @@ async def portfolio_summary(
             })
             instrument = instruments[0] if instruments else {"id": instrument_id, "company_name": "Unknown instrument"}
             prices = await client.select("price_history", {
-                "select": "trading_date,close,provider", "instrument_id": f"eq.{instrument_id}",
-                "order": "trading_date.desc", "limit": "1",
+                "select": "trading_date,close,provider,exchange", "instrument_id": f"eq.{instrument_id}",
+                "exchange": "eq.NSE", "order": "trading_date.desc", "limit": "1",
             })
+            if not prices:
+                prices = await client.select("price_history", {
+                    "select": "trading_date,close,provider,exchange", "instrument_id": f"eq.{instrument_id}",
+                    "exchange": "eq.BSE", "order": "trading_date.desc", "limit": "1",
+                })
             latest = prices[0] if prices else None
             current_price = float(latest["close"]) if latest else None
             value = quantity * current_price if current_price is not None else None
@@ -181,6 +186,7 @@ async def portfolio_summary(
                 "unrealized_pnl": round(unrealized, 2) if unrealized is not None else None,
                 "price_as_of": latest["trading_date"] if latest else None,
                 "price_provider": latest["provider"] if latest else None,
+                "price_exchange": latest["exchange"] if latest else None,
             })
         prices_complete = missing_prices == 0
         unrealized_total = market_value - cost_basis if prices_complete else None
