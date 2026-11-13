@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.instruments import router as instruments_router
 from app.api.market_data import router as market_data_router
 from app.api.ml import router as ml_router
+from app.api.copilot import router as copilot_router
 from app.api.portfolios import router as portfolios_router
 from app.auth import get_current_user
 from app.config import settings
@@ -20,6 +21,7 @@ app.add_middleware(
 app.include_router(instruments_router, prefix=settings.api_v1_prefix)
 app.include_router(market_data_router, prefix=settings.api_v1_prefix)
 app.include_router(ml_router, prefix=settings.api_v1_prefix)
+app.include_router(copilot_router, prefix=settings.api_v1_prefix)
 app.include_router(portfolios_router, prefix=settings.api_v1_prefix)
 
 @app.get("/health", tags=["system"])

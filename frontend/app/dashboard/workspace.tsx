@@ -13,6 +13,7 @@ type Technicals = {
 };
 type ModelScore = { model: string; mae: number; rmse: number; directional_accuracy: number; out_of_sample_r2: number; out_of_sample_predictions: number };
 type BenchmarkResult = { selected_model: string; predicted_forward_return_pct: number; training_observations: number; zero_return_baseline_mae: number; model_scores: ModelScore[]; horizon_trading_days: number; disclaimer: string };
+type CopilotResult = { answer: string; model: string; data_provider: string; data_as_of: string; disclaimer: string };
 type PortfolioSummary = {
   holdings: Array<{ company_name: string; nse_symbol?: string; quantity: number; average_cost: number; market_value: number | null; unrealized_pnl: number | null }>;
   summary: { market_value: number | null; unrealized_pnl: number | null; realized_pnl: number; total_return_including_dividends: number | null; holdings_count: number };
@@ -36,6 +37,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   const [portfolioName, setPortfolioName] = useState("My portfolio");
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkResult | null>(null);
+  const [copilot, setCopilot] = useState<CopilotResult | null>(null);
   const [horizonDays, setHorizonDays] = useState<5 | 20 | 60>(5);
   const [kind, setKind] = useState<"BUY" | "SELL" | "DIVIDEND" | "FEE">("BUY");
   const [quantity, setQuantity] = useState("1");
@@ -67,7 +69,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   }, []);
 
   const loadStock = useCallback(async (instrument: Instrument) => {
-    setSelected(instrument); setTechnicals(null); setBars([]); setBenchmark(null); setError("");
+    setSelected(instrument); setTechnicals(null); setBars([]); setBenchmark(null); setCopilot(null); setError("");
     const symbol = exchange === "NSE" ? (instrument.nse_symbol || "") : (instrument.bse_symbol || "");
     if (!symbol) { setError(`No ${exchange} provider symbol is mapped for this instrument yet.`); return; }
     try {
@@ -116,6 +118,22 @@ export default function ResearchWorkspace({ email }: { email: string }) {
       setBenchmark(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Model benchmark failed");
+    } finally { setBusy(false); }
+  }
+
+  async function generateCopilotSummary() {
+    if (!selected) return;
+    const symbol = exchange === "NSE" ? (selected.nse_symbol || "") : (selected.bse_symbol || "");
+    if (!symbol) { setError(`No ${exchange} symbol is mapped for this instrument.`); return; }
+    setBusy(true); setError(""); setNotice(""); setCopilot(null);
+    try {
+      const result = await api("/copilot/stock-summary", {
+        method: "POST",
+        body: JSON.stringify({ symbol, exchange }),
+      });
+      setCopilot(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Research copilot request failed");
     } finally { setBusy(false); }
   }
 
@@ -173,6 +191,10 @@ export default function ResearchWorkspace({ email }: { email: string }) {
               <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[420px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Model</th><th className="pb-2 text-right">MAE</th><th className="pb-2 text-right">RMSE</th><th className="pb-2 text-right">Direction</th></tr></thead><tbody>{benchmark.model_scores.map(row => <tr key={row.model} className="border-t border-slate-800"><td className="py-2">{row.model}</td><td className="py-2 text-right">{row.mae.toFixed(5)}</td><td className="py-2 text-right">{row.rmse.toFixed(5)}</td><td className="py-2 text-right">{(row.directional_accuracy * 100).toFixed(1)}%</td></tr>)}</tbody></table></div>
               <p className="mt-3 text-xs leading-5 text-slate-500">{benchmark.disclaimer}</p>
             </div>}
+          </div>
+          <div className="mt-6 border-t border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-wider text-blue-400">05 / Research copilot</p><h4 className="mt-1 text-sm font-semibold">AI stock research note</h4><p className="mt-1 text-xs text-slate-500">Groq summary grounded in the displayed market data and indicators</p></div><button type="button" disabled={busy || !token} onClick={() => void generateCopilotSummary()} className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 disabled:opacity-40">{busy ? "Working…" : "Generate research note"}</button></div>
+            {copilot && <article className="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4"><p className="whitespace-pre-wrap text-sm leading-7 text-slate-200">{copilot.answer}</p><p className="mt-4 border-t border-slate-800 pt-3 text-xs leading-5 text-slate-500">Model: {copilot.model} · Source: {copilot.data_provider} · Data as of {copilot.data_as_of}. {copilot.disclaimer}</p></article>}
           </div>
           <p className="mt-4 text-xs leading-5 text-slate-500">Daily data is best-effort and may be delayed. Indicators are descriptive, not trading signals.</p>
         </div>}

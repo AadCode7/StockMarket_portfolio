@@ -11,6 +11,7 @@ Next.js App Router + React + Tailwind frontend; FastAPI backend; Supabase Postgr
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback drawdown.
 - User-owned portfolio CRUD, transaction ledger, weighted-average cost, realised/unrealised P&L, dividends and fees.
 - Authenticated multi-model walk-forward benchmark for 5/20/60 trading-day forward returns, with a zero-return baseline and horizon-sized purge gap.
+- Authenticated Groq research-note endpoint built from server-calculated technical indicators and daily OHLCV only. It does not use external news or RAG documents.
 
 ## Data flow
 1. Frontend searches public instrument master via FastAPI.

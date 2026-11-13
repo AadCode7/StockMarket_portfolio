@@ -10,6 +10,7 @@ MarketLens is an NSE/BSE research and portfolio workspace, built in independentl
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
 - Private portfolios, transaction ledger, weighted-average cost accounting, realised/unrealised P&L, dividend and fee tracking.
 - Authenticated walk-forward benchmark for Ridge, Random Forest, Extra Trees and HistGradientBoosting, with a zero-return baseline and purged time-series splits.
+- Groq research-note endpoint grounded in the current stock indicators and daily bars; no external news or RAG documents are claimed.
 - Supabase RLS and JWT-scoped PostgREST access for user-owned portfolio records.
 
 ## Stack
@@ -35,6 +36,7 @@ Full instructions: docs/SETUP.md.
 - GET /api/v1/market-data/history?symbol=RELIANCE&exchange=NSE&start=2024-01-01&end=2024-12-31
 - GET /api/v1/market-data/technicals?symbol=RELIANCE&exchange=NSE&lookback_days=500
 - POST /api/v1/ml/benchmark (Supabase bearer token required; accepts 5, 20 or 60 trading-day horizons)
+- POST /api/v1/copilot/stock-summary (Supabase bearer token and Groq key required)
 - GET/POST /api/v1/portfolios (Supabase bearer token required)
 - GET/POST /api/v1/portfolios/{portfolio_id}/transactions (bearer token required)
 - GET /api/v1/portfolios/{portfolio_id}/summary (bearer token required)

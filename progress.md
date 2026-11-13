@@ -16,6 +16,7 @@
 - [x] Frontend market lookup, exchange selector, indicators, recent daily prices, portfolio creation and transaction entry.
 - [x] Multi-model walk-forward benchmark: Ridge, Random Forest, Extra Trees and HistGradientBoosting.
 - [x] Zero-return baseline, horizon-sized purge gap, out-of-sample metrics and authenticated benchmark endpoint/UI.
+- [x] Groq structured-data research note endpoint and dashboard action, with no fabricated fundamentals/news or RAG claims.
 - [x] Unit tests for indicators, portfolio accounting, provider fallback and ML benchmark.
 - [x] Setup, security, data-source and architecture documentation updated.
 
@@ -25,6 +26,7 @@
 - Price persistence/cache requires SUPABASE_SERVICE_ROLE_KEY on the backend only. Without it, live provider results are returned but not stored.
 - Portfolio accounting is weighted-average cost, not FIFO tax-lot accounting. Corporate-action adjustment is not yet applied to holdings.
 - ML benchmark is an experimental baseline. No model registry, persistence, MLflow, calibration, uncertainty intervals or SHAP yet.
+- The Groq copilot summarises supplied price/indicator data only. It does not retrieve documents, news or external sources and is not yet a multi-agent RAG copilot.
 - RAG tables exist but document ingestion and retrieval are not active.
 
 ## Next milestones

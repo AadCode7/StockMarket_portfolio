@@ -21,7 +21,8 @@ Supabase Auth handles registration, confirmation and sessions. Next.js uses SSR 
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
 - Portfolio creation, transaction ledger, weighted-average cost basis, realised/unrealised P&L, dividends and fee accounting.
 - Multi-model forward-return benchmark with Ridge, Random Forest, Extra Trees and HistGradientBoosting, expanding-window splits, a horizon-sized purge gap and zero-return baseline.
-- Frontend stock search, exchange selection, technical indicator view, recent prices, model benchmark results, portfolio ledger and summary.
+- Frontend stock search, exchange selection, technical indicator view, recent prices, model benchmark results, portfolio ledger, summary and a Groq structured-data research note.
+- Groq copilot endpoint builds its prompt from server-calculated indicators and market bars; no unsupported news/fundamentals or RAG context is implied.
 
 ## ML validation rules
 The initial task is forward return over 5, 20 or 60 trading observations. Feature rows are chronological; training uses expanding-window TimeSeriesSplit and a purge gap equal to the target horizon. MAE is the primary selection metric, but a candidate is selected only if it beats the zero-return baseline. Metrics include RMSE, directional accuracy and out-of-sample R-squared. This is an experimental benchmark, not a live prediction service. It has no MLflow registry, calibration, transaction-cost backtest, uncertainty intervals or SHAP yet.
