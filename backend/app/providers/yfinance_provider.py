@@ -1,4 +1,5 @@
 import asyncio
+import math
 from datetime import date, datetime, timezone
 import yfinance as yf
 from app.schemas import PriceBar
@@ -21,11 +22,14 @@ class YahooFinanceProvider(MarketDataProvider):
         retrieved = datetime.now(timezone.utc)
         rows = []
         for timestamp, row in frame.iterrows():
-            adj = row.get("Adj Close")
+            adjusted = row.get("Adj Close")
+            adjusted_value = None
+            if adjusted is not None and math.isfinite(float(adjusted)) and float(adjusted) > 0:
+                adjusted_value = float(adjusted)
             rows.append(PriceBar(
                 symbol=symbol.upper(), exchange=exchange.upper(), trading_date=timestamp.date(),
                 open=float(row["Open"]), high=float(row["High"]), low=float(row["Low"]),
-                close=float(row["Close"]), adjusted_close=float(adj) if adj is not None else None,
+                close=float(row["Close"]), adjusted_close=adjusted_value,
                 volume=int(row["Volume"]), provider="yfinance", retrieved_at=retrieved,
                 is_delayed=True,
             ))

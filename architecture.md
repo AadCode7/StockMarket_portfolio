@@ -1,15 +1,40 @@
 # StockMarket_portfolio architecture
 
-NSE/BSE stock research and portfolio intelligence platform. Next.js App Router is the frontend; FastAPI is the API; Supabase provides PostgreSQL, Auth, RLS, and pgvector; Groq is the configurable LLM provider. Market data adapters retain source and retrieval timestamps.
+## Product
+NSE/BSE stock research and portfolio intelligence: instrument lookup, daily price history, descriptive technical analysis, transaction-based portfolio tracking, model benchmarking, explainability and an evidence-grounded research copilot. The product does not execute trades or promise returns.
 
-## Security
-Supabase Auth handles signup, confirmation, and sessions. Next.js uses SSR session checks. FastAPI validates Supabase bearer JWTs using JWKS, issuer, audience, and expiry. RLS scopes user-owned rows to auth.uid(). Service-role keys must never reach the browser.
+## Runtime
+- Next.js App Router, React, TypeScript and Tailwind CSS.
+- FastAPI with typed Pydantic contracts.
+- Supabase PostgreSQL, Supabase Auth, pgvector and Row Level Security.
+- Groq as the configurable LLM provider; no paid-provider fallback.
+- Yahoo Finance via yfinance and optional Alpha Vantage BSE daily-history adapter.
+- Vercel frontend and a container-hosted API. Free hosts may sleep.
+
+## Authentication and authorization
+Supabase Auth handles registration, confirmation and sessions. Next.js uses SSR cookie sessions and server-side getUser checks. FastAPI validates Supabase JWT signatures, issuer, audience and expiry using JWKS. User portfolio requests forward the user's JWT to PostgREST, where RLS enforces auth.uid() ownership. A server-only service-role key is optionally used for public market-data persistence only; it must never be sent to a browser and must never be used for user portfolio requests.
+
+## Implemented modules
+- Instrument lookup against a small seeded NSE/BSE symbol universe.
+- Daily OHLCV provider fallback with data validation, de-duplication, retrieval timestamps, optional persistence and a short cache.
+- SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
+- Portfolio creation, transaction ledger, weighted-average cost basis, realised/unrealised P&L, dividends and fee accounting.
+- Frontend stock search, exchange selection, technical indicator view, recent prices, portfolio ledger and summary.
 
 ## Data integrity
-Store raw and adjusted prices separately. Preserve provider, exchange, currency, and retrieval timestamps. Use actual filing/publication dates for financial features. Prevent look-ahead leakage with chronological walk-forward validation. SHAP describes model attribution, not causality. LLMs explain deterministic tool outputs and must not invent financial values.
+1. Keep exchange, provider, trading date and retrieval timestamp with every observation.
+2. Preserve unadjusted OHLC and adjusted close separately.
+3. Reject invalid OHLC, non-positive prices, negative volume, duplicate dates and out-of-range observations.
+4. Use only actual publication dates for future financial-statement features.
+5. Prevent look-ahead leakage with chronological walk-forward validation and purged overlapping labels.
+6. Treat SHAP as model attribution, not causality.
+7. LLMs explain tool outputs; deterministic code calculates financial values.
 
-## Planned modules
-backend/app/api, core, contracts, db, data/providers, data/ingestion, analytics, features, ml, ml/explainability, portfolio, ai/agents, ai/tools, ai/rag, services, tasks. frontend/app, components, and lib. supabase/migrations. docs, research, and scripts. These modules will be added as implemented; no empty placeholder packages are created.
+## Database
+The initial migration establishes instruments, price_history, portfolios, portfolio_transactions, research_documents and document_chunks. Migration 0002 adds bse_symbol, corporate_actions, ingestion-run tracking and a small starter instrument universe. pgvector is enabled, but document ingestion/retrieval is not yet implemented.
+
+## Planned next
+Authoritative exchange instrument master and ISIN reconciliation; financial statements and corporate-action ingestion; market benchmarks; ML feature store, multi-model walk-forward benchmark and MLflow; SHAP; portfolio risk and optimisation; document ingestion, hybrid RAG and LangGraph agents.
 
 ## Cost controls
-Use free-tier providers only, expose quotas and staleness, and never silently fall back to paid APIs. Free hosting may sleep and is not a guaranteed always-on service.
+Use free-tier APIs only, surface quota/staleness failures and never silently switch to a paid service. Market data is daily and best-effort, not real-time. Persisted market data requires a backend-only Supabase service-role key. Cache by symbol/date/provider and bound provider requests.

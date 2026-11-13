@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     app_name: str = "Stock Research Platform"
     api_v1_prefix: str = "/api/v1"
     backend_cors_origins: str = "http://localhost:3000"
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
     supabase_jwt_issuer: str = ""
     supabase_jwks_url: str = ""
     llm_provider: str = "groq"
@@ -15,6 +18,7 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=1200, ge=1, le=4096)
     llm_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     market_data_providers: str = "yfinance,alpha_vantage"
+    market_data_cache_seconds: int = Field(default=900, ge=0, le=86400)
     alpha_vantage_api_key: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -1,24 +1,26 @@
-# Architecture
+# Architecture and implementation status
 
-## Deployment shape
-Start with a modular monolith: Next.js frontend, FastAPI API, Supabase PostgreSQL/Auth/pgvector, and provider adapters. Add independent workers when ingestion and ML jobs exist. Never train models inside a serverless HTTP request.
+## Runtime
+Next.js App Router + React + Tailwind frontend; FastAPI backend; Supabase PostgreSQL/Auth/pgvector; Groq LLM adapter; Yahoo Finance and optional Alpha Vantage daily data adapters.
 
-## Trust boundaries
-- Browser: Supabase publishable/anon key only; session cookies managed by @supabase/ssr.
-- API: verifies Supabase access-token signature through JWKS, issuer, audience, and expiry.
-- Database: RLS is the final ownership boundary. Every user-owned row is scoped to auth.uid().
-- Secrets: Groq key, provider keys, and database connection strings exist only in backend/deployment secrets.
-- LLM: generated text is not a source of financial numbers.
+## Implemented
+- Email/password signup, confirmation, login, SSR session refresh and protected dashboard.
+- FastAPI Supabase JWKS token verification.
+- Instrument lookup using a small seed universe.
+- Daily historical bars with provider fallback, OHLC validation, optional Supabase persistence and a short cache.
+- Technical indicators: SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback drawdown.
+- User-owned portfolio CRUD, transaction ledger, weighted-average cost, realised/unrealised P&L, dividends and fees.
 
 ## Data flow
-1. Provider adapters fetch and normalize observations.
-2. Validation checks identifiers, dates, missing values, duplicates, and OHLC consistency.
-3. Stored observations retain provider and retrieval timestamps.
-4. Analytics and ML consume versioned, point-in-time-safe data.
-5. Copilot tools return deterministic calculations and source metadata before LLM synthesis.
+1. Frontend searches public instrument master via FastAPI.
+2. Stock page requests daily history/technicals.
+3. Provider router tries configured free providers in order; invalid/empty data triggers fallback.
+4. Backend optionally persists bars using a server-only service-role key. This is the only service-role path.
+5. Portfolio API forwards the user's Supabase JWT to PostgREST; RLS restricts access to that user's portfolios and transactions.
+6. Portfolio valuation reads latest stored daily closes. If a holding has no stored price, aggregate market value and total P&L are withheld rather than estimated.
 
-## ML and AI
-Future models use forward-return/volatility targets, chronological walk-forward validation, transaction-cost-aware backtests, and reproducible data/feature/model versions. SHAP represents model attribution, not causality. RAG uses metadata filters, PostgreSQL full-text search, pgvector, reranking, and source citations.
+## Planned
+Authoritative exchange instrument master and ISIN reconciliation, financial statements, corporate-action ingestion, market benchmarks, walk-forward ML benchmarking, MLflow, SHAP, portfolio risk/optimisation, document ingestion, hybrid retrieval and LangGraph agents.
 
-## Free-tier constraints
-Free services have quotas, rate limits, pauses, and changing terms. Expose freshness and provider failures. Free hosting is suitable for a prototype, not a guaranteed always-on market-data service.
+## Important limitations
+The starter symbol list is not a complete exchange instrument master. Yahoo Finance is unofficial. The current portfolio ledger uses weighted-average cost, not tax-lot FIFO. The RAG schema exists, but no document ingestion or retrieval workflow is active yet.

@@ -1,13 +1,21 @@
-# Initial data-source policy
+# Data-source policy
 
-| Source | Intended use | Caveat |
+| Source | Use | Limitations |
 |---|---|---|
-| Yahoo Finance via yfinance | Prototype NSE/BSE daily historical bars | Unofficial, best-effort; availability and terms can change. No live-data guarantee or redistribution right is assumed. |
-| Alpha Vantage | Optional secondary BSE daily history | Requires a free API key; documented India ticker example uses SYMBOL.BSE. NSE fallback is deliberately disabled until its symbol mapping is verified. Free request limits apply. |
-| NSE/BSE disclosures | Exchange-published company filings and information | Market-data feeds and commercial use can require a licence/agreement. Do not scrape private endpoints. |
-| Company investor-relations pages | Annual reports and quarterly results | Respect site terms, robots rules, and document copyright. |
-| RBI public datasets | Macro context | Preserve publication date and source URL. |
+| Yahoo Finance via yfinance | Best-effort NSE/BSE daily OHLCV history | Unofficial endpoint wrapper; availability, accuracy, terms and coverage can change. Not a live feed or assumed redistribution licence. |
+| Alpha Vantage | Optional BSE daily history fallback | Requires a free API key; free request limits apply; exchange symbol coverage must be checked. |
+| NSE/BSE instrument data and disclosures | Authoritative instrument mapping and company filings | Confirm permitted access, storage and redistribution rights. |
+| Company investor-relations pages | Annual reports and quarterly results | Respect terms and document copyright. |
+| RBI public datasets | Macro context in a later phase | Preserve publication date and source URL. |
 
-The backend tries providers in MARKET_DATA_PROVIDERS order. Missing credentials or unsupported exchange formats cause a provider to be skipped. If all sources fail, return an explicit unavailable-data error. Never fabricate prices or label daily bars as live quotes.
+## Data integrity
+- Every stored bar includes exchange, provider, retrieval timestamp, and trading date.
+- Raw OHLC and adjusted close are kept separately.
+- Provider results are checked for valid OHLC values, non-negative volume, requested date range and duplicate trading dates.
+- Provider fallback is sequential and configuration-driven. An empty or invalid response is a failure, not a zero-price observation.
+- Cached bars are used only when their retrieval timestamp is within the configured cache window and the requested date range appears covered.
+- If providers fail, previously stored bars may be returned with their original provider and retrieval timestamps.
+- Do not describe daily bars as live quotes.
 
-Before enabling a source, verify symbol format, coverage, adjustment status, trading dates, corporate-action discontinuities, and storage/display/redistribution terms.
+## Free-tier policy
+A free API key is not a grant of exchange redistribution rights. Check provider terms before publishing, sharing or commercialising market data. Never scrape undocumented endpoints or bypass rate limits.
