@@ -6,6 +6,7 @@ httpx==0.28.1
 PyJWT[crypto]==2.10.1
 yfinance==0.2.65
 pandas==2.2.3
+scikit-learn==1.6.1
 numpy==2.2.5
 groq==0.26.0
 pytest==8.3.5

@@ -42,7 +42,7 @@ class SupabaseRestClient:
         headers = dict(self.headers)
         if prefer:
             headers["Prefer"] = prefer
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.request(
                 method, f"{self.base_url}/{table}", headers=headers,
                 params=params, json=payload,
@@ -58,11 +58,28 @@ class SupabaseRestClient:
         result = await self.request("GET", table, params=params)
         return result if isinstance(result, list) else []
 
+    async def select_all(
+        self, table: str, params: dict[str, str], *, page_size: int = 1000, max_rows: int = 10000
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        offset = 0
+        while offset < max_rows:
+            page = await self.select(table, {
+                **params, "limit": str(min(page_size, max_rows - offset)), "offset": str(offset),
+            })
+            rows.extend(page)
+            if len(page) < page_size:
+                break
+            offset += len(page)
+        return rows
+
     async def insert(self, table: str, payload: dict[str, Any] | list[dict[str, Any]]) -> Any:
         return await self.request("POST", table, payload=payload, prefer="return=representation")
 
-    async def upsert(self, table: str, payload: list[dict[str, Any]], on_conflict: str) -> Any:
-        return await self.request(
-            "POST", table, params={"on_conflict": on_conflict}, payload=payload,
-            prefer="resolution=merge-duplicates,return=minimal",
-        )
+    async def upsert(self, table: str, payload: list[dict[str, Any]], on_conflict: str) -> None:
+        for offset in range(0, len(payload), 500):
+            await self.request(
+                "POST", table, params={"on_conflict": on_conflict},
+                payload=payload[offset:offset + 500],
+                prefer="resolution=merge-duplicates,return=minimal",
+            )

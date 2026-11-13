@@ -11,6 +11,8 @@ type Technicals = {
   macd: number | null; annualised_volatility_20d: number | null; maximum_drawdown_in_window: number;
   data_provider: string; recent_bars: PriceBar[];
 };
+type ModelScore = { model: string; mae: number; rmse: number; directional_accuracy: number; out_of_sample_r2: number; out_of_sample_predictions: number };
+type BenchmarkResult = { selected_model: string; predicted_forward_return_pct: number; training_observations: number; zero_return_baseline_mae: number; model_scores: ModelScore[]; horizon_trading_days: number; disclaimer: string };
 type PortfolioSummary = {
   holdings: Array<{ company_name: string; nse_symbol?: string; quantity: number; average_cost: number; market_value: number | null; unrealized_pnl: number | null }>;
   summary: { market_value: number | null; unrealized_pnl: number | null; realized_pnl: number; total_return_including_dividends: number | null; holdings_count: number };
@@ -33,6 +35,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   const [portfolioId, setPortfolioId] = useState("");
   const [portfolioName, setPortfolioName] = useState("My portfolio");
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
+  const [benchmark, setBenchmark] = useState<BenchmarkResult | null>(null);
   const [kind, setKind] = useState<"BUY" | "SELL" | "DIVIDEND" | "FEE">("BUY");
   const [quantity, setQuantity] = useState("1");
   const [price, setPrice] = useState("");
@@ -63,7 +66,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   }, []);
 
   const loadStock = useCallback(async (instrument: Instrument) => {
-    setSelected(instrument); setTechnicals(null); setBars([]); setError("");
+    setSelected(instrument); setTechnicals(null); setBars([]); setBenchmark(null); setError("");
     const symbol = exchange === "NSE" ? (instrument.nse_symbol || "") : (instrument.bse_symbol || "");
     if (!symbol) { setError(`No ${exchange} provider symbol is mapped for this instrument yet.`); return; }
     try {
@@ -98,6 +101,22 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   }, [searchInstruments]);
   useEffect(() => { if (token) void loadPortfolios(); }, [token, loadPortfolios]);
   useEffect(() => { if (token && portfolioId) void loadSummary(); }, [token, portfolioId, loadSummary]);
+
+  async function runBenchmark() {
+    if (!selected) return;
+    const symbol = exchange === "NSE" ? (selected.nse_symbol || "") : (selected.bse_symbol || "");
+    if (!symbol) { setError(`No ${exchange} symbol is mapped for this instrument.`); return; }
+    setBusy(true); setError(""); setNotice(""); setBenchmark(null);
+    try {
+      const result = await api("/ml/benchmark", {
+        method: "POST",
+        body: JSON.stringify({ symbol, exchange, horizon_days: 5, lookback_days: 1500 }),
+      });
+      setBenchmark(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Model benchmark failed");
+    } finally { setBusy(false); }
+  }
 
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); await searchInstruments(query);
@@ -146,6 +165,14 @@ export default function ResearchWorkspace({ email }: { email: string }) {
             <Metric label="MACD" value={fmt(technicals.macd, 3)} /><Metric label="Annual volatility" value={technicals.annualised_volatility_20d == null ? "Not available" : `${(technicals.annualised_volatility_20d * 100).toFixed(2)}%`} /><Metric label="Window drawdown" value={`${(technicals.maximum_drawdown_in_window * 100).toFixed(2)}%`} /><Metric label="Provider" value={technicals.data_provider} />
           </div> : <p className="mt-5 text-sm text-slate-500">Select an instrument to load daily prices and technical indicators.</p>}
           {bars.length > 0 && <div className="mt-6 overflow-x-auto"><h4 className="mb-3 text-sm font-semibold">Recent daily prices</h4><table className="w-full min-w-[520px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Date</th><th className="pb-2 text-right">Open</th><th className="pb-2 text-right">High</th><th className="pb-2 text-right">Low</th><th className="pb-2 text-right">Close</th><th className="pb-2 text-right">Volume</th></tr></thead><tbody>{bars.map(row => <tr key={row.trading_date} className="border-t border-slate-800"><td className="py-2">{row.trading_date}</td><td className="py-2 text-right">{fmt(row.open)}</td><td className="py-2 text-right">{fmt(row.high)}</td><td className="py-2 text-right">{fmt(row.low)}</td><td className="py-2 text-right">{fmt(row.close)}</td><td className="py-2 text-right">{row.volume.toLocaleString("en-IN")}</td></tr>)}</tbody></table></div>}
+          <div className="mt-6 border-t border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-wider text-blue-400">04 / Model lab</p><h4 className="mt-1 text-sm font-semibold">Walk-forward model benchmark</h4><p className="mt-1 text-xs text-slate-500">Ridge, Random Forest, Extra Trees and Gradient Boosting · 5 trading-day return</p></div><button type="button" disabled={busy || !token} onClick={() => void runBenchmark()} className="rounded-lg border border-blue-500 px-3 py-2 text-xs font-semibold text-blue-300 disabled:opacity-40">{busy ? "Running…" : "Run benchmark"}</button></div>
+            {benchmark && <div className="mt-4">
+              <div className="grid grid-cols-2 gap-3"><Metric label="Selected model" value={benchmark.selected_model} /><Metric label="Estimated 5-day return" value={`${benchmark.predicted_forward_return_pct.toFixed(3)}%`} /><Metric label="Training observations" value={String(benchmark.training_observations)} /><Metric label="Zero-return baseline MAE" value={benchmark.zero_return_baseline_mae.toFixed(5)} /></div>
+              <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[420px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Model</th><th className="pb-2 text-right">MAE</th><th className="pb-2 text-right">RMSE</th><th className="pb-2 text-right">Direction</th></tr></thead><tbody>{benchmark.model_scores.map(row => <tr key={row.model} className="border-t border-slate-800"><td className="py-2">{row.model}</td><td className="py-2 text-right">{row.mae.toFixed(5)}</td><td className="py-2 text-right">{row.rmse.toFixed(5)}</td><td className="py-2 text-right">{(row.directional_accuracy * 100).toFixed(1)}%</td></tr>)}</tbody></table></div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">{benchmark.disclaimer}</p>
+            </div>}
+          </div>
           <p className="mt-4 text-xs leading-5 text-slate-500">Daily data is best-effort and may be delayed. Indicators are descriptive, not trading signals.</p>
         </div>}
       </section>

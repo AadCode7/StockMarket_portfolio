@@ -1,12 +1,13 @@
 # StockMarket_portfolio architecture
 
 ## Product
-NSE/BSE stock research and portfolio intelligence: instrument lookup, daily price history, descriptive technical analysis, transaction-based portfolio tracking, model benchmarking, explainability and an evidence-grounded research copilot. The product does not execute trades or promise returns.
+NSE/BSE stock research and portfolio intelligence: instrument lookup, daily price history, descriptive technical analysis, transaction-based portfolio tracking, experimental ML benchmarking, explainability and an evidence-grounded research copilot. The product does not execute trades or promise returns.
 
 ## Runtime
 - Next.js App Router, React, TypeScript and Tailwind CSS.
 - FastAPI with typed Pydantic contracts.
 - Supabase PostgreSQL, Supabase Auth, pgvector and Row Level Security.
+- pandas, NumPy and scikit-learn for deterministic features and baseline ML.
 - Groq as the configurable LLM provider; no paid-provider fallback.
 - Yahoo Finance via yfinance and optional Alpha Vantage BSE daily-history adapter.
 - Vercel frontend and a container-hosted API. Free hosts may sleep.
@@ -16,10 +17,14 @@ Supabase Auth handles registration, confirmation and sessions. Next.js uses SSR 
 
 ## Implemented modules
 - Instrument lookup against a small seeded NSE/BSE symbol universe.
-- Daily OHLCV provider fallback with data validation, de-duplication, retrieval timestamps, optional persistence and a short cache.
+- Daily OHLCV provider fallback with validation, de-duplication, retrieval timestamps, optional persistence and a short cache.
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
 - Portfolio creation, transaction ledger, weighted-average cost basis, realised/unrealised P&L, dividends and fee accounting.
-- Frontend stock search, exchange selection, technical indicator view, recent prices, portfolio ledger and summary.
+- Multi-model forward-return benchmark with Ridge, Random Forest, Extra Trees and HistGradientBoosting, expanding-window splits, a horizon-sized purge gap and zero-return baseline.
+- Frontend stock search, exchange selection, technical indicator view, recent prices, model benchmark results, portfolio ledger and summary.
+
+## ML validation rules
+The initial task is forward return over 5, 20 or 60 trading observations. Feature rows are chronological; training uses expanding-window TimeSeriesSplit and a purge gap equal to the target horizon. MAE is the primary selection metric, but a candidate is selected only if it beats the zero-return baseline. Metrics include RMSE, directional accuracy and out-of-sample R-squared. This is an experimental benchmark, not a live prediction service. It has no MLflow registry, calibration, transaction-cost backtest, uncertainty intervals or SHAP yet.
 
 ## Data integrity
 1. Keep exchange, provider, trading date and retrieval timestamp with every observation.
@@ -34,7 +39,7 @@ Supabase Auth handles registration, confirmation and sessions. Next.js uses SSR 
 The initial migration establishes instruments, price_history, portfolios, portfolio_transactions, research_documents and document_chunks. Migration 0002 adds bse_symbol, corporate_actions, ingestion-run tracking and a small starter instrument universe. pgvector is enabled, but document ingestion/retrieval is not yet implemented.
 
 ## Planned next
-Authoritative exchange instrument master and ISIN reconciliation; financial statements and corporate-action ingestion; market benchmarks; ML feature store, multi-model walk-forward benchmark and MLflow; SHAP; portfolio risk and optimisation; document ingestion, hybrid RAG and LangGraph agents.
+Authoritative exchange instrument master and ISIN reconciliation; financial statements and corporate-action ingestion; market benchmarks; model persistence and MLflow; SHAP; portfolio risk and optimisation; document ingestion, hybrid RAG and LangGraph agents.
 
 ## Cost controls
 Use free-tier APIs only, surface quota/staleness failures and never silently switch to a paid service. Market data is daily and best-effort, not real-time. Persisted market data requires a backend-only Supabase service-role key. Cache by symbol/date/provider and bound provider requests.

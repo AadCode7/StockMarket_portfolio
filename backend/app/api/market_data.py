@@ -19,7 +19,7 @@ async def _cached_rows(symbol: str, exchange: str, start: date, end: date):
     if not instruments:
         return None, None
     instrument_id = instruments[0]["id"]
-    rows = await admin.select("price_history", {
+    rows = await admin.select_all("price_history", {
         "select": "trading_date,open,high,low,close,adjusted_close,volume,provider,retrieved_at",
         "instrument_id": f"eq.{instrument_id}", "exchange": f"eq.{exchange}",
         "trading_date": f"gte.{start.isoformat()}",
@@ -40,7 +40,7 @@ def _to_bars(rows: list[dict], symbol: str, exchange: str) -> list[PriceBar]:
         ))
     return bars
 
-async def _fetch_and_store(symbol: str, exchange: str, start: date, end: date):
+async def fetch_and_store(symbol: str, exchange: str, start: date, end: date):
     admin = None
     instrument_id = None
     cached = []

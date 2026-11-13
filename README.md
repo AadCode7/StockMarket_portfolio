@@ -1,20 +1,22 @@
 # Indian Stock Market Research & Portfolio Intelligence
 
-MarketLens is an NSE/BSE research and portfolio workspace. It is being implemented in independently testable stages, with free-tier providers as the default.
+MarketLens is an NSE/BSE research and portfolio workspace, built in independently testable stages with free-tier providers as the default.
 
-## Working functionality in this release
+## Working functionality
 - Supabase Auth signup, email confirmation, login, session handling and protected dashboard.
 - Public instrument search against a starter NSE/BSE instrument master.
 - Daily historical OHLCV retrieval through provider adapters with validation and fallback.
 - Optional server-side persistence and a 15-minute cache in Supabase PostgreSQL.
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
 - Private portfolios, transaction ledger, weighted-average cost accounting, realised/unrealised P&L, dividend and fee tracking.
+- Authenticated walk-forward benchmark for Ridge, Random Forest, Extra Trees and HistGradientBoosting, with a zero-return baseline and purged time-series splits.
 - Supabase RLS and JWT-scoped PostgREST access for user-owned portfolio records.
 
 ## Stack
 - Frontend: Next.js App Router, React, TypeScript, Tailwind CSS
 - Backend: FastAPI, Python 3.11
 - Database/auth: Supabase PostgreSQL, Supabase Auth, pgvector, Row Level Security
+- ML: pandas, NumPy, scikit-learn
 - LLM: Groq API through a configurable provider interface; no automatic paid fallback
 - Market data: Yahoo Finance via yfinance; optional Alpha Vantage adapter
 
@@ -32,19 +34,22 @@ Full instructions: docs/SETUP.md.
 - GET /api/v1/instruments?q=RELIANCE&exchange=ALL
 - GET /api/v1/market-data/history?symbol=RELIANCE&exchange=NSE&start=2024-01-01&end=2024-12-31
 - GET /api/v1/market-data/technicals?symbol=RELIANCE&exchange=NSE&lookback_days=500
+- POST /api/v1/ml/benchmark (Supabase bearer token required; accepts 5, 20 or 60 trading-day horizons)
 - GET/POST /api/v1/portfolios (Supabase bearer token required)
 - GET/POST /api/v1/portfolios/{portfolio_id}/transactions (bearer token required)
 - GET /api/v1/portfolios/{portfolio_id}/summary (bearer token required)
 
-## Market-data and accounting caveats
+## Market-data, ML and accounting caveats
 Yahoo Finance access through yfinance is unofficial and best-effort. It is not a guaranteed live feed or an assumed redistribution licence. Alpha Vantage coverage and free quotas must be checked for each exchange symbol. Daily prices are not live quotes.
 
 The starter instrument universe is deliberately small. ISINs are not fabricated; load an authoritative exchange instrument master before relying on full instrument identity. Price persistence requires the server-only Supabase service-role key. Without it, market endpoints can still return provider data, but the API will not cache it in PostgreSQL.
 
+The benchmark is a baseline research tool, not a production forecasting system. It compares four scikit-learn models using expanding-window validation, a horizon-sized purge gap and a zero-return baseline. It does not include transaction costs, model persistence, MLflow tracking, calibration or SHAP. The best model is selected only if its out-of-sample MAE beats the zero-return baseline.
+
 Portfolio accounting uses weighted-average cost. Buy charges enter cost basis, sell charges reduce realised P&L, dividends are entered as an amount in the transaction price field, and fees are entered as an amount in the same field. A total valuation is withheld if any open holding lacks a stored closing price. Taxes and statutory costs are only included if entered by the user.
 
 ## Still planned
-Model benchmarking and walk-forward validation, MLflow, SHAP, portfolio risk/optimisation, financial statement ingestion, corporate-action ingestion, document ingestion, hybrid RAG and LangGraph agents are not yet implemented. pgvector is enabled in the database schema, but the RAG pipeline is not yet active.
+Authoritative instrument-master ingestion and ISIN reconciliation, fundamentals, corporate-action processing, MLflow, SHAP, portfolio risk/optimisation, document ingestion, hybrid RAG and LangGraph agents are not yet implemented. pgvector is enabled, but the RAG pipeline is not active.
 
 ## Security
 The browser uses only the Supabase publishable/anon key. The service-role key is backend-only and bypasses RLS; it is used only for public market-data persistence. Portfolio reads and writes use the user's bearer JWT, and database RLS scopes rows to auth.uid(). Never commit API keys or passwords.
