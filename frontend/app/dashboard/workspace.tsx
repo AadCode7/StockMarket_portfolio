@@ -219,6 +219,18 @@ export default function ResearchWorkspace({ email }: { email: string }) {
               <div className="grid grid-cols-2 gap-3"><Metric label="Selected model" value={benchmark.selected_model} /><Metric label={`Estimated ${benchmark.horizon_trading_days}-day return`} value={`${benchmark.predicted_forward_return_pct.toFixed(3)}%`} /><Metric label="Training observations" value={String(benchmark.training_observations)} /><Metric label="Zero-return baseline MAE" value={benchmark.zero_return_baseline_mae.toFixed(5)} /></div>
               <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[420px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Model</th><th className="pb-2 text-right">MAE</th><th className="pb-2 text-right">RMSE</th><th className="pb-2 text-right">Direction</th></tr></thead><tbody>{benchmark.model_scores.map(row => <tr key={row.model} className="border-t border-slate-800"><td className="py-2">{row.model}</td><td className="py-2 text-right">{row.mae.toFixed(5)}</td><td className="py-2 text-right">{row.rmse.toFixed(5)}</td><td className="py-2 text-right">{(row.directional_accuracy * 100).toFixed(1)}%</td></tr>)}</tbody></table></div>
               <p className="mt-3 text-xs leading-5 text-slate-500">{benchmark.disclaimer}</p>
+              {benchmark.selected_model !== "zero_return_baseline" && <div className="mt-4 border-t border-slate-800 pt-4">
+                <div className="flex items-center justify-between gap-3"><div><h5 className="text-sm font-semibold">Model explainability</h5><p className="mt-1 text-xs text-slate-500">SHAP global importance, local contributions and recent changes</p></div><button type="button" disabled={busy || !token} onClick={() => void explainSelectedModel()} className="rounded-lg border border-slate-600 px-3 py-2 text-xs text-slate-200 disabled:opacity-40">{busy ? "Explaining…" : "Run SHAP"}</button></div>
+                {shapResult && <div className="mt-4 space-y-4">
+                  <p className="text-xs text-slate-400">Model output: {(shapResult.prediction_forward_return * 100).toFixed(3)}% · As of {shapResult.as_of}</p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div><h6 className="mb-2 text-xs font-semibold text-slate-400">Global importance · mean |SHAP|</h6>{shapResult.global_importance.slice(0,8).map(row => <div key={row.feature} className="flex justify-between gap-3 border-b border-slate-800 py-1.5 text-xs"><span>{row.feature}</span><span className="tabular-nums">{row.mean_abs_shap.toFixed(5)}</span></div>)}</div>
+                    <div><h6 className="mb-2 text-xs font-semibold text-slate-400">Latest observation · signed SHAP</h6>{shapResult.local_contributions.slice(0,8).map(row => <div key={row.feature} className="flex justify-between gap-3 border-b border-slate-800 py-1.5 text-xs"><span>{row.feature}</span><span className={row.shap_value >= 0 ? "text-emerald-400" : "text-rose-400"}>{row.shap_value >= 0 ? "+" : ""}{row.shap_value.toFixed(5)}</span></div>)}</div>
+                  </div>
+                  <div><h6 className="mb-2 text-xs font-semibold text-slate-400">Recent attribution timeline</h6>{shapResult.temporal_attributions.map(row => <p key={row.date} className="border-b border-slate-800 py-2 text-xs"><span className="mr-3 text-slate-500">{row.date}</span>{row.top_contributors.map(item => `${item.feature} ${item.shap_value >= 0 ? "+" : ""}${item.shap_value.toFixed(4)}`).join(" · ")}</p>)}</div>
+                  <p className="text-xs leading-5 text-slate-500">{shapResult.interpretation}</p>
+                </div>}
+              </div>}
             </div>}
           </div>
           <div className="mt-6 border-t border-slate-800 pt-5">
