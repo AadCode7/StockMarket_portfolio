@@ -16,6 +16,7 @@
 - [x] Frontend market lookup, exchange selector, indicators, recent daily prices, portfolio creation and transaction entry.
 - [x] Multi-model walk-forward benchmark: Ridge, Random Forest, Extra Trees and HistGradientBoosting.
 - [x] Zero-return baseline, horizon-sized purge gap, out-of-sample metrics and authenticated benchmark endpoint/UI.
+- [x] Authenticated SHAP endpoint and dashboard: global mean absolute importance, local signed contributions and recent attribution timeline for the selected model.
 - [x] Groq structured-data research note endpoint and dashboard action, with no fabricated fundamentals/news or RAG claims.
 - [x] Unit tests for indicators, portfolio accounting, provider fallback and ML benchmark.
 - [x] Setup, security, data-source and architecture documentation updated.
@@ -25,7 +26,7 @@
 - Market data is daily, unofficial/best-effort via Yahoo Finance; Alpha Vantage BSE coverage must be verified.
 - Price persistence/cache requires SUPABASE_SERVICE_ROLE_KEY on the backend only. Without it, live provider results are returned but not stored.
 - Portfolio accounting is weighted-average cost, not FIFO tax-lot accounting. Corporate-action adjustment is not yet applied to holdings.
-- ML benchmark is an experimental baseline. No model registry, persistence, MLflow, calibration, uncertainty intervals or SHAP yet.
+- ML benchmark is an experimental baseline. No model registry, persistence, MLflow, calibration or uncertainty intervals yet. SHAP explanations are bounded and are not causal explanations.
 - The Groq copilot summarises supplied price/indicator data only. It does not retrieve documents, news or external sources and is not yet a multi-agent RAG copilot.
 - RAG tables exist but document ingestion and retrieval are not active.
 
@@ -34,7 +35,8 @@
 - [ ] Persisted fundamentals, financial statements and corporate-action ingestion.
 - [ ] Market benchmark/index data and sector analytics.
 - [ ] Feature store, model persistence and MLflow experiment/model registry.
-- [ ] SHAP global/local/temporal explanations and model attribution stability.
+- [x] SHAP global/local/temporal explanations for the selected fitted model.
+- [ ] Model attribution stability across walk-forward folds and market regimes.
 - [ ] Portfolio return series, volatility, Sharpe, drawdown, VaR/CVaR and optimisation.
 - [ ] Document ingestion, hybrid retrieval and LangGraph research copilot.
 - [ ] Production rate limiting, audit logging, observability and deployment smoke tests.
