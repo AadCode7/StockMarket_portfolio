@@ -10,6 +10,7 @@ MarketLens is an NSE/BSE research and portfolio workspace, built in independentl
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
 - Private portfolios, transaction ledger, weighted-average cost accounting, realised/unrealised P&L, dividend and fee tracking.
 - Authenticated walk-forward benchmark for Ridge, Random Forest, Extra Trees and HistGradientBoosting, with a zero-return baseline and purged time-series splits.
+- Authenticated SHAP explanations for the selected model: global mean absolute attribution, latest-observation signed contributions and a recent attribution timeline.
 - Groq research-note endpoint grounded in the current stock indicators and daily bars; no external news or RAG documents are claimed.
 - Supabase RLS and JWT-scoped PostgREST access for user-owned portfolio records.
 
@@ -17,7 +18,7 @@ MarketLens is an NSE/BSE research and portfolio workspace, built in independentl
 - Frontend: Next.js App Router, React, TypeScript, Tailwind CSS
 - Backend: FastAPI, Python 3.11
 - Database/auth: Supabase PostgreSQL, Supabase Auth, pgvector, Row Level Security
-- ML: pandas, NumPy, scikit-learn
+- ML: pandas, NumPy, scikit-learn, SHAP
 - LLM: Groq API through a configurable provider interface; no automatic paid fallback
 - Market data: Yahoo Finance via yfinance; optional Alpha Vantage adapter
 
@@ -36,6 +37,7 @@ Full instructions: docs/SETUP.md.
 - GET /api/v1/market-data/history?symbol=RELIANCE&exchange=NSE&start=2024-01-01&end=2024-12-31
 - GET /api/v1/market-data/technicals?symbol=RELIANCE&exchange=NSE&lookback_days=500
 - POST /api/v1/ml/benchmark (Supabase bearer token required; accepts 5, 20 or 60 trading-day horizons)
+- POST /api/v1/ml/explain (Supabase bearer token required; accepts the selected model, horizon and lookback)
 - POST /api/v1/copilot/stock-summary (Supabase bearer token and Groq key required)
 - GET/POST /api/v1/portfolios (Supabase bearer token required)
 - GET/POST /api/v1/portfolios/{portfolio_id}/transactions (bearer token required)
@@ -46,7 +48,7 @@ Yahoo Finance access through yfinance is unofficial and best-effort. It is not a
 
 The starter instrument universe is deliberately small. ISINs are not fabricated; load an authoritative exchange instrument master before relying on full instrument identity. Price persistence requires the server-only Supabase service-role key. Without it, market endpoints can still return provider data, but the API will not cache it in PostgreSQL.
 
-The benchmark is a baseline research tool, not a production forecasting system. It compares four scikit-learn models using expanding-window validation, a horizon-sized purge gap and a zero-return baseline. It does not include transaction costs, model persistence, MLflow tracking, calibration or SHAP. The best model is selected only if its out-of-sample MAE beats the zero-return baseline.
+The benchmark is a baseline research tool, not a production forecasting system. It compares four scikit-learn models using expanding-window validation, a horizon-sized purge gap and a zero-return baseline. It does not include transaction costs, model persistence, MLflow tracking, calibration or uncertainty intervals. SHAP explains the fitted model relative to a sampled background set; it does not establish causality or guarantee future performance. The best model is selected only if its out-of-sample MAE beats the zero-return baseline.
 
 Portfolio accounting uses weighted-average cost. Buy charges enter cost basis, sell charges reduce realised P&L, dividends are entered as an amount in the transaction price field, and fees are entered as an amount in the same field. A total valuation is withheld if any open holding lacks a stored closing price. Taxes and statutory costs are only included if entered by the user.
 
