@@ -14,6 +14,14 @@ type Technicals = {
 type ModelScore = { model: string; mae: number; rmse: number; directional_accuracy: number; out_of_sample_r2: number; out_of_sample_predictions: number };
 type BenchmarkResult = { selected_model: string; predicted_forward_return_pct: number; training_observations: number; zero_return_baseline_mae: number; model_scores: ModelScore[]; horizon_trading_days: number; disclaimer: string };
 type CopilotResult = { answer: string; model: string; data_provider: string; data_as_of: string; disclaimer: string };
+type ShapResult = {
+  model: string; horizon_trading_days: number; as_of: string; prediction_forward_return: number;
+  base_value: number; reconstructed_prediction: number;
+  global_importance: Array<{ feature: string; mean_abs_shap: number }>;
+  local_contributions: Array<{ feature: string; shap_value: number }>;
+  temporal_attributions: Array<{ date: string; top_contributors: Array<{ feature: string; shap_value: number }> }>;
+  interpretation: string;
+};
 type PortfolioSummary = {
   holdings: Array<{ company_name: string; nse_symbol?: string; quantity: number; average_cost: number; market_value: number | null; unrealized_pnl: number | null }>;
   summary: { market_value: number | null; unrealized_pnl: number | null; realized_pnl: number; total_return_including_dividends: number | null; holdings_count: number };
@@ -37,6 +45,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   const [portfolioName, setPortfolioName] = useState("My portfolio");
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkResult | null>(null);
+  const [shapResult, setShapResult] = useState<ShapResult | null>(null);
   const [copilot, setCopilot] = useState<CopilotResult | null>(null);
   const [horizonDays, setHorizonDays] = useState<5 | 20 | 60>(5);
   const [kind, setKind] = useState<"BUY" | "SELL" | "DIVIDEND" | "FEE">("BUY");
@@ -69,7 +78,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
   }, []);
 
   const loadStock = useCallback(async (instrument: Instrument) => {
-    setSelected(instrument); setTechnicals(null); setBars([]); setBenchmark(null); setCopilot(null); setError("");
+    setSelected(instrument); setTechnicals(null); setBars([]); setBenchmark(null); setShapResult(null); setCopilot(null); setError("");
     const symbol = exchange === "NSE" ? (instrument.nse_symbol || "") : (instrument.bse_symbol || "");
     if (!symbol) { setError(`No ${exchange} provider symbol is mapped for this instrument yet.`); return; }
     try {
@@ -118,6 +127,26 @@ export default function ResearchWorkspace({ email }: { email: string }) {
       setBenchmark(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Model benchmark failed");
+    } finally { setBusy(false); }
+  }
+
+
+  async function explainSelectedModel() {
+    if (!selected || !benchmark || benchmark.selected_model === "zero_return_baseline") return;
+    const symbol = exchange === "NSE" ? (selected.nse_symbol || "") : (selected.bse_symbol || "");
+    if (!symbol) { setError(`No ${exchange} symbol is mapped for this instrument.`); return; }
+    setBusy(true); setError(""); setNotice(""); setShapResult(null);
+    try {
+      const result = await api("/ml/explain", {
+        method: "POST",
+        body: JSON.stringify({
+          symbol, exchange, horizon_days: horizonDays, lookback_days: 1500,
+          model: benchmark.selected_model,
+        }),
+      });
+      setShapResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "SHAP explanation failed");
     } finally { setBusy(false); }
   }
 
@@ -178,7 +207,7 @@ export default function ResearchWorkspace({ email }: { email: string }) {
         <form onSubmit={search} className="mt-5 flex gap-2"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Company name or symbol" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500" /><button className="rounded-lg bg-blue-500 px-4 py-3 text-sm font-semibold text-slate-950">Search</button></form>
         <div className="mt-3 flex flex-wrap gap-2">{instruments.slice(0, 15).map(item => <button key={item.id} onClick={() => void loadStock(item)} className={`rounded-lg border px-3 py-2 text-left text-xs ${selected?.id === item.id ? "border-blue-500 bg-blue-500/10 text-blue-300" : "border-slate-700 text-slate-300"}`}><span className="block font-semibold">{item.nse_symbol || item.bse_scrip_code}</span><span className="mt-1 block max-w-36 truncate text-slate-500">{item.company_name}</span></button>)}</div>
         {selected && <div className="mt-6 border-t border-slate-800 pt-5">
-          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-wider text-slate-500">{exchange} · {selected.sector || "Sector not classified"}</p><h3 className="mt-1 text-lg font-semibold">{selected.company_name}</h3><p className="text-sm text-slate-400">{exchange === "NSE" ? selected.nse_symbol : selected.bse_symbol || "Not mapped"}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => { setExchange("NSE"); setTechnicals(null); setBars([]); }} className={`rounded-md border px-3 py-2 text-xs ${exchange === "NSE" ? "border-blue-500 text-blue-300" : "border-slate-700 text-slate-400"}`}>NSE</button><button type="button" onClick={() => { setExchange("BSE"); setTechnicals(null); setBars([]); }} className={`rounded-md border px-3 py-2 text-xs ${exchange === "BSE" ? "border-blue-500 text-blue-300" : "border-slate-700 text-slate-400"}`}>BSE</button><button type="button" onClick={() => void loadStock(selected!)} className="rounded-md bg-blue-500 px-3 py-2 text-xs font-semibold text-slate-950">Load {exchange}</button>{technicals && <div className="text-right"><p className="text-xs text-slate-500">Latest close · {technicals.as_of}</p><p className="text-2xl font-semibold">{money(technicals.close)}</p></div>}</div></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-wider text-slate-500">{exchange} · {selected.sector || "Sector not classified"}</p><h3 className="mt-1 text-lg font-semibold">{selected.company_name}</h3><p className="text-sm text-slate-400">{exchange === "NSE" ? selected.nse_symbol : selected.bse_symbol || "Not mapped"}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => { setExchange("NSE"); setTechnicals(null); setBars([]); setBenchmark(null); setShapResult(null); }} className={`rounded-md border px-3 py-2 text-xs ${exchange === "NSE" ? "border-blue-500 text-blue-300" : "border-slate-700 text-slate-400"}`}>NSE</button><button type="button" onClick={() => { setExchange("BSE"); setTechnicals(null); setBars([]); setBenchmark(null); setShapResult(null); }} className={`rounded-md border px-3 py-2 text-xs ${exchange === "BSE" ? "border-blue-500 text-blue-300" : "border-slate-700 text-slate-400"}`}>BSE</button><button type="button" onClick={() => void loadStock(selected!)} className="rounded-md bg-blue-500 px-3 py-2 text-xs font-semibold text-slate-950">Load {exchange}</button>{technicals && <div className="text-right"><p className="text-xs text-slate-500">Latest close · {technicals.as_of}</p><p className="text-2xl font-semibold">{money(technicals.close)}</p></div>}</div></div>
           {technicals ? <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
             <Metric label="RSI (14)" value={fmt(technicals.rsi_14)} /><Metric label="SMA (20)" value={money(technicals.sma["20"])} /><Metric label="SMA (50)" value={money(technicals.sma["50"])} /><Metric label="SMA (200)" value={money(technicals.sma["200"])} />
             <Metric label="MACD" value={fmt(technicals.macd, 3)} /><Metric label="Annual volatility" value={technicals.annualised_volatility_20d == null ? "Not available" : `${(technicals.annualised_volatility_20d * 100).toFixed(2)}%`} /><Metric label="Window drawdown" value={`${(technicals.maximum_drawdown_in_window * 100).toFixed(2)}%`} /><Metric label="Provider" value={technicals.data_provider} />
