@@ -33,3 +33,32 @@ def test_benchmark_rejects_insufficient_data():
         assert False, "Expected a minimum-data error"
     except ValueError as exc:
         assert "Not enough clean observations" in str(exc)
+
+
+def test_shap_explanation_returns_global_local_and_temporal_attributions():
+    from app.ml.benchmark import explain_forward_returns
+
+    result = explain_forward_returns(
+        synthetic_bars(), horizon_days=5, model_name="ridge",
+        background_size=12, explanation_rows=4,
+    )
+    assert result["model"] == "ridge"
+    assert result["horizon_trading_days"] == 5
+    assert result["global_importance"]
+    assert result["local_contributions"]
+    assert len(result["temporal_attributions"]) == 4
+    assert math.isfinite(result["prediction_forward_return"])
+    assert math.isclose(
+        result["reconstructed_prediction"], result["prediction_forward_return"],
+        rel_tol=1e-4, abs_tol=1e-5,
+    )
+
+
+def test_shap_explanation_rejects_unknown_model():
+    from app.ml.benchmark import explain_forward_returns
+
+    try:
+        explain_forward_returns(synthetic_bars(), horizon_days=5, model_name="unknown")
+        assert False, "Expected a model validation error"
+    except ValueError as exc:
+        assert "model_name must be one of" in str(exc)
