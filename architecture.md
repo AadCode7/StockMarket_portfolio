@@ -21,11 +21,12 @@ Supabase Auth handles registration, confirmation and sessions. Next.js uses SSR 
 - SMA 20/50/200, RSI 14, MACD, 20-day annualised volatility and lookback maximum drawdown.
 - Portfolio creation, transaction ledger, weighted-average cost basis, realised/unrealised P&L, dividends and fee accounting.
 - Multi-model forward-return benchmark with Ridge, Random Forest, Extra Trees and HistGradientBoosting, expanding-window splits, a horizon-sized purge gap and zero-return baseline.
+- Authenticated SHAP explainability endpoint for the selected model, returning global mean absolute attributions, latest-observation signed contributions and a recent temporal attribution series.
 - Frontend stock search, exchange selection, technical indicator view, recent prices, model benchmark results, portfolio ledger, summary and a Groq structured-data research note.
 - Groq copilot endpoint builds its prompt from server-calculated indicators and market bars; no unsupported news/fundamentals or RAG context is implied.
 
 ## ML validation rules
-The initial task is forward return over 5, 20 or 60 trading observations. Feature rows are chronological; training uses expanding-window TimeSeriesSplit and a purge gap equal to the target horizon. MAE is the primary selection metric, but a candidate is selected only if it beats the zero-return baseline. Metrics include RMSE, directional accuracy and out-of-sample R-squared. This is an experimental benchmark, not a live prediction service. It has no MLflow registry, calibration, transaction-cost backtest, uncertainty intervals or SHAP yet.
+The initial task is forward return over 5, 20 or 60 trading observations. Feature rows are chronological; training uses expanding-window TimeSeriesSplit and a purge gap equal to the target horizon. MAE is the primary selection metric, but a candidate is selected only if it beats the zero-return baseline. Metrics include RMSE, directional accuracy and out-of-sample R-squared. This is an experimental benchmark, not a live prediction service. SHAP uses a bounded deterministic background sample and a recent explanation window. It explains model output relative to that background, not causal effects. There is no MLflow registry, calibration, transaction-cost backtest, uncertainty interval or fold/regime attribution-stability analysis.
 
 ## Data integrity
 1. Keep exchange, provider, trading date and retrieval timestamp with every observation.
@@ -40,7 +41,7 @@ The initial task is forward return over 5, 20 or 60 trading observations. Featur
 The initial migration establishes instruments, price_history, portfolios, portfolio_transactions, research_documents and document_chunks. Migration 0002 adds bse_symbol, corporate_actions, ingestion-run tracking and a small starter instrument universe. pgvector is enabled, but document ingestion/retrieval is not yet implemented.
 
 ## Planned next
-Authoritative exchange instrument master and ISIN reconciliation; financial statements and corporate-action ingestion; market benchmarks; model persistence and MLflow; SHAP; portfolio risk and optimisation; document ingestion, hybrid RAG and LangGraph agents.
+Authoritative exchange instrument master and ISIN reconciliation; financial statements and corporate-action ingestion; market benchmarks; model persistence and MLflow; fold/regime attribution-stability analysis; portfolio risk and optimisation; document ingestion, hybrid RAG and LangGraph agents.
 
 ## Cost controls
 Use free-tier APIs only, surface quota/staleness failures and never silently switch to a paid service. Market data is daily and best-effort, not real-time. Persisted market data requires a backend-only Supabase service-role key. Cache by symbol/date/provider and bound provider requests.
